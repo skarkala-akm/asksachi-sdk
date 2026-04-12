@@ -17,6 +17,10 @@ dev = [
     "ruff>=0.4.0",
 ]
 
+[project.scripts]
+echo-agent       = "asksachi_sdk.samples.echo_agent.surface_cli:main"
+echo-agent-serve = "asksachi_sdk.samples.echo_agent.surface_api:serve_main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

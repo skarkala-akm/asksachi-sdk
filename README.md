@@ -35,16 +35,16 @@ uv sync --extra dev
 
 The bundled echo agent shows all three surfaces from a single `WorkflowSpec`.
 
-**A2A HTTP server** (port 8766):
-
-```bash
-uv run python -c "from asksachi_sdk.samples.echo_agent.surface_api import serve_main; serve_main()"
-```
-
 **CLI**:
 
 ```bash
-uv run python -c "from asksachi_sdk.samples.echo_agent.surface_cli import main; main()" -- -m "hello"
+uv run echo-agent -m "hello"
+```
+
+**A2A HTTP server** (port 8766):
+
+```bash
+uv run echo-agent-serve
 ```
 
 **Smoke-test the A2A server** (once it's running):

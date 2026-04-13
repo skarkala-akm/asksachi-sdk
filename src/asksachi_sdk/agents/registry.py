@@ -34,9 +34,6 @@ class AgentRegistry:
         self._agents: dict[str, Agent] = {}
 
     def register(self, agent: Agent) -> None:
-        if agent.id in self._agents:
-            log.warning("agent_duplicate_skipped agent_id=%s", agent.id)
-            return
         self._agents[agent.id] = agent
 
     def get(self, workflow_id: str) -> Agent | None:

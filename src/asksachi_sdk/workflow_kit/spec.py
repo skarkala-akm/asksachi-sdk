@@ -125,10 +125,24 @@ class WorkflowSpec:
     def serve_main(self) -> None:
         """Entry point: build and run the A2A HTTP+JSON server with uvicorn.
 
-        Reads ``ASKSACHI_WORKFLOW_BASE_URL`` (default ``http://127.0.0.1:{port}``) to
-        know which URL to advertise when registering with AskSachi.
+        Reads ``ASKSACHI_WORKFLOW_BASE_URL`` (if set) to determine which URL to advertise
+        when registering with AskSachi.  If the env var is absent, the actual ``--host`` /
+        ``--port`` CLI arguments are peeked at so the registration URL always matches where
+        uvicorn is really listening (avoids falling back to the hardcoded ``spec.port``).
         """
+        import argparse
+        import os
+
         from asksachi_sdk.workflow_kit.uvicorn_cli import run_uvicorn_app
+
+        # Resolve bind address before building the app so AskSachi registration uses
+        # the real listen port (e.g. --port 8080) rather than the spec default.
+        if not os.environ.get("ASKSACHI_WORKFLOW_BASE_URL", "").strip():
+            p = argparse.ArgumentParser(add_help=False)
+            p.add_argument("--host", default="127.0.0.1")
+            p.add_argument("--port", type=int, default=self.port)
+            ns, _ = p.parse_known_args()
+            os.environ["ASKSACHI_WORKFLOW_BASE_URL"] = f"http://{ns.host}:{ns.port}"
 
         run_uvicorn_app(self.build_app(register_on_startup=True), default_port=self.port)
 

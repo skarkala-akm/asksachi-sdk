@@ -1,6 +1,6 @@
 [project]
 name = "asksachi-sdk"
-version = "0.1.0"
+version = "0.1.1"
 description = "AskSachi SDK — shared A2A protocol primitives and workflow-kit building blocks."
 readme = "README.md"
 requires-python = ">=3.12"

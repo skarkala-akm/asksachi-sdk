@@ -100,6 +100,16 @@ For streaming, clients can send `Accept: application/x-ndjson` to receive:
 - **Breaking changes are explicit**: if an interface must change, treat it as a breaking change (major version bump +
   clear documentation).
 
+## Using the contract-guard skill while “vibe coding”
+
+When using a coding agent to iterate quickly on an agent repo, keep this file in the repo and treat it as the rules:
+
+- Ensure the repo contains `skills/asksachi-contract-guard/SKILL.md` (generated automatically by `asksachi-init`).
+- At the start of a coding session, tell your coding agent to **read and follow** that skill file.
+- Any time behavior changes, require the coding agent to:
+  - **add or update tests** for the change
+  - run `uv run pytest` and confirm it passes before you consider the change done
+
 ## Authentication
 
 - **Registration with AskSachi**: when an agent HTTP server starts, it can register itself with AskSachi using

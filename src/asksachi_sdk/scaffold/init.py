@@ -46,6 +46,30 @@ uv run pytest
 """
 
 
+def _local_asksachi_sdk_dependency() -> str | None:
+    """Return a PEP 508 direct URL dependency for a local asksachi-sdk checkout, if detectable."""
+    # When running `asksachi-init` from a source checkout, __file__ points into:
+    #   <repo>/src/asksachi_sdk/scaffold/init.py
+    # so parents[3] should be the repo root.
+    sdk_root = Path(__file__).resolve().parents[3]
+    pyproject = sdk_root / "pyproject.toml"
+    if not pyproject.exists():
+        return None
+    txt = pyproject.read_text(encoding="utf-8")
+    if 'name = "asksachi-sdk"' not in txt:
+        return None
+    return f"asksachi-sdk @ {sdk_root.as_uri()}"
+
+
+def _default_asksachi_sdk_dependency() -> str:
+    """Dependency string for generated agent projects.
+
+    - Prefer local file:// when running from a source checkout (fast iteration).
+    - Fall back to a git URL so a fresh machine can install without a local checkout.
+    """
+    return _local_asksachi_sdk_dependency() or "asksachi-sdk @ git+https://github.com/skarkala-akm/asksachi-sdk"
+
+
 def _slugify(s: str) -> str:
     s = s.strip().lower()
     s = re.sub(r"[^a-z0-9]+", "-", s)
@@ -78,7 +102,9 @@ def _render_pyproject(cfg: ScaffoldConfig) -> str:
     cli_script = f"{_slugify(cfg.workflow_id)}-cli"
     serve_script = f"{_slugify(cfg.workflow_id)}-serve"
     mod = f"{cfg.package}.agent"
-    return (
+    dep = _default_asksachi_sdk_dependency()
+    allow_direct = " @ " in dep
+    out = (
         '[project]\n'
         f'name = "{_slugify(cfg.workflow_id)}"\n'
         'version = "0.1.0"\n'
@@ -86,13 +112,17 @@ def _render_pyproject(cfg: ScaffoldConfig) -> str:
         'readme = "README.md"\n'
         'requires-python = ">=3.12"\n'
         "dependencies = [\n"
-        '    "asksachi-sdk",\n'
+        f'    "{dep}",\n'
         "]\n"
         "\n"
         "[project.scripts]\n"
         f'{cli_script} = "{mod}:cli_main"\n'
         f'{serve_script} = "{mod}:serve_main"\n'
         "\n"
+    )
+    if allow_direct:
+        out += "[tool.hatch.metadata]\nallow-direct-references = true\n\n"
+    out += (
         "[build-system]\n"
         'requires = ["hatchling"]\n'
         'build-backend = "hatchling.build"\n'
@@ -100,6 +130,7 @@ def _render_pyproject(cfg: ScaffoldConfig) -> str:
         "[tool.hatch.build.targets.wheel]\n"
         'packages = ["src/' + cfg.package + '"]\n'
     )
+    return out
 
 
 def _render_agent_py(cfg: ScaffoldConfig) -> str:
@@ -140,6 +171,8 @@ def _render_readme(cfg: ScaffoldConfig) -> str:
         "```bash\n"
         f'uv run {cli_script} -m "hello"\n'
         "```\n\n"
+        "## Install notes\n\n"
+        "This project depends on `asksachi-sdk`. On a fresh machine, `uv sync` will fetch it from Git.\n\n"
         "## Run (HTTP server)\n\n"
         "```bash\n"
         f"uv run {serve_script}\n"

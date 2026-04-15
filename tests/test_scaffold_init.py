@@ -25,6 +25,10 @@ def test_generate_skeleton_writes_expected_files(tmp_path: Path) -> None:
     assert (target / "tests" / "test_smoke.py").exists()
     assert (target / "skills" / "asksachi-contract-guard" / "SKILL.md").exists()
 
+    pyproject = (target / "pyproject.toml").read_text(encoding="utf-8")
+    assert "asksachi-sdk @ file://" in pyproject  # local checkout should be detected in SDK test runs
+    assert "allow-direct-references = true" in pyproject
+
     agent_py = (target / "src" / "my_agent" / "agent.py").read_text(encoding="utf-8")
     assert 'id="my-agent"' in agent_py
     assert "app = spec.build_app()" in agent_py

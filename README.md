@@ -89,6 +89,25 @@ For streaming, clients can send `Accept: application/x-ndjson` to receive:
 - one or more `{ "type": "delta", "text": "..." }` lines
 - one final `{ "type": "complete", "task": { ... } }` line
 
+## How the API interfaces are protected
+
+- **Contract tests in this repo**: `tests/test_sdk_a2a.py` and `tests/test_sdk_workflow_kit.py` assert the endpoint
+  shapes, payload fields, and streaming behavior.
+- **Generated agent smoke tests**: `asksachi-init` creates `tests/test_smoke.py` in new agent repos to ensure the
+  Agent Card and `message:send` keep working.
+- **Contract guard skill**: `skills/asksachi-contract-guard/SKILL.md` is intended to be included in agent repos and
+  requires adding/updating tests whenever behavior changes, then running `uv run pytest` before finishing.
+- **Breaking changes are explicit**: if an interface must change, treat it as a breaking change (major version bump +
+  clear documentation).
+
+## Authentication
+
+- **Registration with AskSachi**: when an agent HTTP server starts, it can register itself with AskSachi using
+  `ASKSACHI_API_KEY` (sent as a `Bearer` token) to `ASKSACHI_BASE_URL` (`POST /v1/agents/register`).
+- **Incoming requests to the agent**: the SDK does not add authentication to the agent’s own endpoints by default
+  (`/.well-known/agent-card.json`, `POST /message:send`). If you need auth, add FastAPI auth middleware/dependencies or
+  put the agent behind an API gateway/reverse proxy.
+
 ## Environment variables
 
 - `ASKSACHI_BASE_URL` (default `http://127.0.0.1:8765`): AskSachi base URL (used for registration)

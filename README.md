@@ -16,6 +16,15 @@ AskSachi-compatible agents need to follow a few standard formats so other tools 
 
 This SDK provides those formats and the helper code, so agent projects stay small and you only focus on the agent’s behavior.
 
+## API interface decisions (and why)
+
+- **A2A HTTP+JSON (minimal)**: this is the simplest “agent over HTTP” contract. Tools can discover an agent via an
+  Agent Card and call it with `message:send` without knowing anything about your internal code.
+- **OpenAI-shaped chat responses**: AskSachi chat uses familiar request/response shapes (`complete_chat` plus streaming),
+  which makes it easy to plug agents into chat UIs and existing tooling.
+- **NDJSON streaming**: newline-delimited JSON is easy to stream over plain HTTP and easy for clients to parse while
+  still emitting a final “completed task” object at the end.
+
 ## How it works (flows)
 
 ```mermaid

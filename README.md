@@ -16,6 +16,21 @@ AskSachi-compatible agents need to follow a few standard formats so other tools 
 
 This SDK provides those formats and the helper code, so agent projects stay small and you only focus on the agent’s behavior.
 
+## Terminology and abbreviations
+
+- **Agent**: a program that receives an input message and produces an output reply.
+- **AskSachi**: the gateway/UI that can discover agents and talk to them.
+- **A2A**: “Agent-to-Agent” — a standard way for tools/agents to talk to other agents over HTTP.
+- **HTTP+JSON**: an API over HTTP where requests/responses are JSON.
+- **Agent Card**: a small JSON document that describes an agent (what it is, what it can do, how to call it). In this SDK
+  it is served at `GET /.well-known/agent-card.json`.
+- **`message:send`**: the HTTP endpoint used to send a message to an agent (`POST /message:send`).
+- **Task**: the structured response object representing the work that was done (this SDK returns a completed task).
+- **Artifact**: an output attached to a task (this SDK returns a text artifact containing the reply).
+- **NDJSON**: “Newline-Delimited JSON” — many JSON objects streamed one-per-line (`application/x-ndjson`).
+- **Streaming**: returning output in chunks as it’s produced instead of waiting for the full reply.
+- **SSE**: “Server-Sent Events” — a streaming format commonly used for chat-style token streaming.
+
 ## API interface decisions (and why)
 
 - **A2A HTTP+JSON (minimal)**: this is the simplest “agent over HTTP” contract. Tools can discover an agent via an

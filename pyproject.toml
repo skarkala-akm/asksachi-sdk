@@ -20,6 +20,7 @@ dev = [
 [project.scripts]
 echo-agent       = "asksachi_sdk.samples.echo_agent.surface_cli:main"
 echo-agent-serve = "asksachi_sdk.samples.echo_agent.surface_api:serve_main"
+asksachi-init    = "asksachi_sdk.scaffold.init:main"
 
 [build-system]
 requires = ["hatchling"]

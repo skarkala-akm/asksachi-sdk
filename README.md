@@ -1,8 +1,79 @@
 # asksachi-sdk
 
-Shared building blocks for AskSachi-compatible workflow agents.
+A small Python toolkit for building **AskSachi-compatible agents**.
 
-Provides the **A2A HTTP+JSON primitives**, **WorkflowSpec**, and **CLI/server helpers** that every workflow agent needs. Both `asksachi` (core) and `qbr-workflow` depend on this package.
+You write the agent logic (a function that turns user text into a reply). This SDK helps you run that same agent as:
+- a local **CLI** command
+- a small **HTTP server** (so other tools can call it)
+- an **AskSachi** chat agent
+
+## Why this SDK exists
+
+AskSachi-compatible agents need to follow a few standard formats so other tools can:
+- discover the agent
+- send it messages
+- (optionally) stream the reply as it is generated
+
+This SDK provides those formats and the helper code, so agent projects stay small and you only focus on the agent’s behavior.
+
+## How it works (flows)
+
+```mermaid
+flowchart TD
+  A["You write one runtime function\n(user text → reply text)"] --> B["WorkflowSpec / workflow()"]
+  B --> C["CLI surface\nspec.cli_main()"]
+  B --> D["HTTP surface (A2A)\nspec.serve_main() / spec.build_app()"]
+  B --> E["AskSachi chat surface\nspec.agent (SimpleTextWorkflowAgent)"]
+```
+
+```mermaid
+flowchart LR
+  U["User / tool"] --> P["POST /message:send"]
+  P --> S["A2A HTTP server"]
+  S --> R["Your runtime function"]
+  R --> S
+  S --> O["Completed task (JSON)\nor NDJSON stream"]
+  O --> U
+```
+
+## What it solves
+
+Without `asksachi-sdk`, each agent repo would have to re-implement (and keep consistent):
+- A2A Agent Card generation (`/.well-known/agent-card.json`)
+- the `message:send` endpoint request/response shape
+- streaming behavior used by clients (`Accept: application/x-ndjson`)
+- a simple AskSachi chat-agent adapter (OpenAI-shaped responses + streaming)
+- CLI helpers for local development
+
+## Contract (what other tools expect)
+
+```mermaid
+flowchart LR
+  C["Client"] --> G["GET /.well-known/agent-card.json"]
+  G --> AC["Agent Card JSON"]
+  C --> P["POST /message:send"]
+  P --> MS["message:send handler"]
+  MS --> RT["Your runtime function"]
+  RT --> MS
+```
+
+The minimal HTTP surface implemented by this SDK is:
+- `GET /.well-known/agent-card.json`
+- `POST /message:send` returning a **completed task** with a **text** artifact
+
+For streaming, clients can send `Accept: application/x-ndjson` to receive:
+- one or more `{ "type": "delta", "text": "..." }` lines
+- one final `{ "type": "complete", "task": { ... } }` line
+
+## Environment variables
+
+- `ASKSACHI_BASE_URL` (default `http://127.0.0.1:8765`): AskSachi base URL (used for registration)
+- `ASKSACHI_API_KEY` (optional): bearer token used for registration
+- `ASKSACHI_WORKFLOW_BASE_URL` (optional): the public base URL of this agent service (advertised on registration)
+
+## When to use it
+
+Use `asksachi-sdk` when you want an agent to be runnable as an AskSachi-compatible agent over HTTP, chat, and/or CLI.
 
 ## What's inside
 
@@ -29,6 +100,25 @@ pip install asksachi-sdk
 git clone https://github.com/skarkala-akm/asksachi-sdk
 cd asksachi-sdk
 uv sync --extra dev
+```
+
+## Generate a new agent skeleton
+
+```mermaid
+flowchart TD
+  I["asksachi-init my-agent"] --> D["Creates a new project folder"]
+  D --> P["pyproject.toml (CLI + server entrypoints)"]
+  D --> A["src/<package>/agent.py (WorkflowSpec + runtime)"]
+  D --> R["README.md (how to run)"]
+  D --> T["tests/test_smoke.py (basic contract check)"]
+```
+
+```bash
+asksachi-init my-agent --id my-agent --title "My Agent" --port 8766
+cd my-agent
+uv sync
+uv run my-agent-cli -m "hello"
+uv run my-agent-serve
 ```
 
 ## Run the sample echo agent

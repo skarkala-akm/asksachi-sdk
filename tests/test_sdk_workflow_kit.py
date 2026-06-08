@@ -123,3 +123,71 @@ def test_a2a_app_agent_card_and_message_send() -> None:
     r2 = c.post("/message:send", json={"message": {"parts": [{"text": "ping"}]}})
     assert r2.status_code == 200
     assert r2.json()["task"]["status"]["state"] == "TASK_STATE_COMPLETED"
+
+
+# ── registration heartbeat ────────────────────────────────────────────────────
+
+def test_heartbeat_interval_parsing(monkeypatch) -> None:
+    from asksachi_sdk.workflow_kit import a2a_app
+
+    monkeypatch.delenv("ASKSACHI_REGISTER_HEARTBEAT_SEC", raising=False)
+    assert a2a_app._heartbeat_interval_sec() == a2a_app._HEARTBEAT_DEFAULT_SEC
+    monkeypatch.setenv("ASKSACHI_REGISTER_HEARTBEAT_SEC", "5")
+    assert a2a_app._heartbeat_interval_sec() == 5.0
+    monkeypatch.setenv("ASKSACHI_REGISTER_HEARTBEAT_SEC", "0")  # disabled
+    assert a2a_app._heartbeat_interval_sec() == 0.0
+    monkeypatch.setenv("ASKSACHI_REGISTER_HEARTBEAT_SEC", "nonsense")  # falls back
+    assert a2a_app._heartbeat_interval_sec() == a2a_app._HEARTBEAT_DEFAULT_SEC
+
+
+def test_register_loop_reregisters_on_interval(monkeypatch) -> None:
+    """After the initial registration the loop keeps re-registering (survives gateway restart)."""
+    from asksachi_sdk.workflow_kit import a2a_app
+
+    calls: list[object] = []
+
+    async def fake_retry(url: str) -> None:
+        calls.append("initial")
+
+    async def fake_register(url: str, *, heartbeat: bool = False) -> bool:
+        calls.append(heartbeat)
+        return True
+
+    monkeypatch.setattr(a2a_app, "_register_with_retry", fake_retry)
+    monkeypatch.setattr(a2a_app, "_register_with_asksachi", fake_register)
+    monkeypatch.setenv("ASKSACHI_REGISTER_HEARTBEAT_SEC", "0.02")
+
+    async def run() -> None:
+        task = asyncio.create_task(a2a_app._register_loop("http://self.svc"))
+        await asyncio.sleep(0.12)
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+    asyncio.run(run())
+
+    assert calls[0] == "initial"
+    assert calls.count(True) >= 2  # several heartbeat re-registrations happened
+
+
+def test_register_loop_heartbeat_disabled_returns_after_initial(monkeypatch) -> None:
+    from asksachi_sdk.workflow_kit import a2a_app
+
+    calls: list[object] = []
+
+    async def fake_retry(url: str) -> None:
+        calls.append("initial")
+
+    async def fake_register(url: str, *, heartbeat: bool = False) -> bool:  # pragma: no cover - must not run
+        calls.append(heartbeat)
+        return True
+
+    monkeypatch.setattr(a2a_app, "_register_with_retry", fake_retry)
+    monkeypatch.setattr(a2a_app, "_register_with_asksachi", fake_register)
+    monkeypatch.setenv("ASKSACHI_REGISTER_HEARTBEAT_SEC", "0")  # disabled → loop exits
+
+    asyncio.run(asyncio.wait_for(a2a_app._register_loop("http://self.svc"), timeout=1.0))
+
+    assert calls == ["initial"]  # no heartbeat re-registration
